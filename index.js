@@ -1,3 +1,24 @@
+/**
+ * TODO:
+ * 
+ * Välja vilken mapp/fil man ska kolla eller plocka cwd
+ * Snygga till kod
+ * Felhantering
+ *
+ * Hantera less-parsing i egen modul(?) eller iaf strukturera upp
+ * Olika inställningar för att använda prefix eller ej
+ * Options för komprimering
+ *
+ * Testfall för modulen
+ * 
+ */
+
+
+
+
+var args = process.argv.splice(2);
+
+
 var watch = (function() {
   // Require modules
   var fs = require('fs'),
