@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * TODO:
  * 
@@ -92,7 +94,7 @@ var watch = (function() {
       // Resolve full path
       var path = obj.stat.isFile() ? filename : m_path.resolve(obj.path, filename);
 
-      
+
 
       // Check if file still exists
       if(!fs.existsSync(path)) {
@@ -109,12 +111,12 @@ var watch = (function() {
 
         // If extension is not in options we return;
         if(obj.opt.indexOf(ext) === -1) {
-          
+
           return;
         }
       }
 
-      
+
       // If there doesn't exist any hash in our cache for the file
       // we create it to default empty
       if(!obj.fileHash[path])
@@ -127,7 +129,7 @@ var watch = (function() {
 
       // If nothing has changed
       if(obj.fileHash[path] === hash) {
-        
+
         return;
       }
 
@@ -185,7 +187,7 @@ function parseLess(event, data) {
     });
   });
 
-  
+
 }
 
 
