@@ -145,6 +145,29 @@ module.exports = function prefix(css, compress) {
 
 
 var PrefixrNew = {
+
+  prefixes: {
+    'transform': ['-webkit', '-ms'],
+    'transition': ['-webkit'],
+    'border-radius': ['-webkit'],
+    'animation': ['-webkit'],
+    'border-image': ['-webkit'],
+    'box-shadow': ['-webkit'],
+    'box-sizing': ['-webkit', '-moz'],
+    'linear-gradient': ['-webkit'],
+    'perspective': ['-webkit'],
+    'transform-style': ['-webkit'],
+    'transform-origin': ['-webkit']
+  },
+
+  vendors: [
+    '-webkit',
+    '-moz',
+    '-ms',
+    '-o'
+  ],
+
+
   parseRule: function(rule, filter) {
 
     var properties = {};
@@ -292,7 +315,7 @@ var PrefixrNew = {
 
 
     // Gå igenom alla vendors
-    var vendors = [ '...' ]; // # Ge värde
+    var vendors =  this.vendors; //[ '...' ]; // # Ge värde
 
     // For each vendor in vendors:
     for(var vendor_n = 0, vendor_len = vendors.length; vendor_n < vendor_len; vendor_n++){
@@ -321,18 +344,108 @@ var PrefixrNew = {
 
   // Returnerar prefixet från propertien eller null om ingen finns
   getPrefix: function(prop) {
+    return getPrefixed(prop);
+  },
 
+  getPrefixed: function(property) {
+    for(var v in this.vendors) {
+      if(property.indexOf(this.vendors[v]) !== -1)
+        return this.vendors[v];
+    }
+    return undefined;
+  },
+
+  getPrefixes: function(value, filter) {
+    var v = this.prefixes[value];
+
+    if(v && filter) {
+      var f = [];
+      for(var n in v)
+        if(filter.indexOf(v[n]) !== -1)
+          f.push(v[n]);
+
+      return (f.length > 0)? f : undefined;
+    }
+
+    return v;
+  },
+
+  replaceValue: function(str, value, replacer) {
+    var rgx = new RegExp("(^| |,)"+value);
+
+    return str.replace(rgx, function(match) {
+      return ((match[0] === ' ' || match[0] === ',')? match[0] : '') + replacer;
+    });
   },
 
   // Ska returnera en sträng antingen med det inskickade prefixet eller
   // utan prefix
   prefixValue: function(value, prefix) {
+    // Gets the relevant information from value-string
+    var value_select_rgx = /(^| |,)(-?[A-z]+)+/g;
+    // And stores in @values
+    var values = value.match(value_select_rgx);
+
+
+    // If there were no relevant values we return
+    if(!values)
+      return [value];
+
+    // Lazy-isch evaluation of function
+    var mapValues = function(e){ return e.replace(' ', '').replace(',', ''); };
+    // Trim leftovers (space or ,) from RegExp capture
+    values = values.map(mapValues);
+
+    // Resulting array that is returned
+    var res = [];
+
+    for(var ven in this.vendors) {
+      var indices = [];
+      var vendor = this.vendors[ven];
+
+      // Check filter
+      if(filter && filter.indexOf(vendor) === -1)
+        continue;
+
+      for(var v in values) {
+        var val = values[v];
+
+        var prefixes = this.getPrefixes(val, vendor);
+
+        if(!prefixes)
+          continue;
+
+        indices.push(v);
+      }
+
+      if(indices.length > 0) {
+        var str = value;
+
+        for(var i in indices) {
+          str = this.replaceValue(str, values[i], vendor+'-'+values[i]);
+        }
+
+        res.push(str);
+      }
+    }
+
+    if(res.length === 0 || !filter)
+      res.push(value);
+
+
+
+    return res;
 
   },
 
   // Returnerar en sträng utan prefixes
   unprefix: function(value) {
-
+    // #Untested
+    // For each vendor in this.vendors
+    for(var vendor_n = 0, vendor_len = this.vendors.length; vendor_n < vendor_len; ++vendor_n){
+      var vendor = this.vendors[vendor_n];
+      value.replace(vendor, '');
+    }
   }
 };
 
