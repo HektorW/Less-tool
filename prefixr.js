@@ -135,9 +135,9 @@ log = console.log;
 var css = require('css');
 
 
-module.exports = function prefix(css, compress) {
-  return Prefixr.parseCSS(css, compress);
-};
+// module.exports = function prefix(css, compress) {
+//   return Prefixr.parseCSS(css, compress);
+// };
 
 
 
@@ -146,6 +146,7 @@ module.exports = function prefix(css, compress) {
 
 var PrefixrNew = {
 
+  // Testa regler
   prefixes: {
     'transform': ['-webkit', '-ms'],
     'transition': ['-webkit'],
@@ -154,10 +155,11 @@ var PrefixrNew = {
     'border-image': ['-webkit'],
     'box-shadow': ['-webkit'],
     'box-sizing': ['-webkit', '-moz'],
-    'linear-gradient': ['-webkit'],
+    'linear-gradient': ['-webkit', '-moz', '-ms'],
     'perspective': ['-webkit'],
     'transform-style': ['-webkit'],
-    'transform-origin': ['-webkit']
+    'transform-origin': ['-webkit'],
+    'appearance': ['-webkit', '-moz']
   },
 
   vendors: [
@@ -168,13 +170,76 @@ var PrefixrNew = {
   ],
 
 
+  // Used in unprefix() and getPrefix()
+  prefix_regexp: /-(?:webkit|moz|ms|o)-/g,
+
+
+  parseCSS: function(css_string, compress) {
+    if(compress === undefined)
+      compress = true;
+
+    var tree = css.parse(data);
+
+    if(!tree)
+      throw "Couldn't parse css data.";
+
+    var stylesheet = tree.stylesheet;
+
+    // Loop through rules in stylesheet
+    for(var r in stylesheet.rules) {
+      var rule = stylesheet.rules[r];
+
+
+      // Check typ of rule
+      switch(rule.type) {
+
+        case 'rule': {
+
+          this.parseRule(rule);
+
+        } break;
+
+
+        case 'keyframes': {
+
+          this.parseKeyframes(stylesheet, rule);
+
+        } break;
+
+
+        case 'comment': {
+          // Don't parse
+        } break;
+      }
+    }
+
+
+    // Stringify and return
+    return css.stringify(tree);
+  },
+
+
+  // #Input
+  // rule: {
+  //   type: "rule",
+  //   selectors: ['div'],
+  //   declarations: [ ... ]
+  // }
+  // 
+  // filter : "-webkit -moz" || undefined
   parseRule: function(rule, filter) {
 
     var properties = {};
 
     // For each declaration in rule.declarations
-    for(var declaration_n = 0, declaration_len = rule.declarations.length; declaration_n < declaration_len; declaration_n++){
+    // Går igenom varje declaration som finns i regeln
+    for(var declaration_n = 0, declaration_len = rule.declarations.length; declaration_n < declaration_len; declaration_n++) {
       var declaration = rule.declarations[declaration_n];
+
+      // parseDeclaration() lägger till declaration i properties-objektet
+      // och hanterar den som det behövs
+      // Lägger till alla olika properties som behöver prefix av samma property-typ e.g. -webkit-transform -> transform
+      // Lägger till och matchar alla values som behöver prefix
       this.parseDeclaration(properties, declaration);
     }
 
@@ -182,8 +247,20 @@ var PrefixrNew = {
     var declarations = [];
 
     // For each property in properties
-    for(var p in properties) {
-      var property = properties[p];
+    // Gå igenom alla properties som blivit tillagda av parseDeclaration()
+    for(var property_name in properties) {
+      /* Varje property ser ut såhär
+
+          <NAME> (transition) : {
+            'noprefix': {
+              'noprefix': <VALUE> ('transform'),
+              <PREFIX> '-ms': <VALUE> ('-ms-transform')
+            },
+            <PREFIX> '-webkit': <VALUE> ('-webkit-transform' || 'left'),
+            <PREFIX> '-moz': <VALUE> ('-moz-transform')
+          } 
+      */
+      var property = properties[property_name];
      
       // For each prefix in property
       for(var prefix in property) {
@@ -192,14 +269,14 @@ var PrefixrNew = {
         var value = property[prefix];
 
         // De vars property inte har prefix
-        if(prefix == 'noprefix') {
+        if(prefix === 'noprefix') {
 
           // For each value_prefix in value
           for(var value_prefix in value) {
 
             declarations.push({
               type: 'declaration',
-              property: property,
+              property: property_name,
               value: value[value_prefix]
             });
 
@@ -211,42 +288,63 @@ var PrefixrNew = {
         else {
           declarations.push({
             type: 'declaration',
-            property: prefix + property,
+            property: prefix + '-' + property_name,
             value: value
           });
         }
       }
     }
+
+
+    // Sätt den uppdaterade declarations i rule
+    rule.declarations = declarations;
+
+    return rule;
   },
 
 
   // Tar hand om enstaka deklaration
   parseDeclaration: function(properties, declaration) {
-    var name     = this.getName(declaration.property),
-        prefix   = this.getPrefix(declaration.property) || null,
-        value    = declaration.value,
-        property = properties[name],
-        unprefixed, value_prefix;
+    var name        = this.unprefix(declaration.property), // #tested
+        prop_prefix = this.getPrefix(declaration.property), // #tested
+        value       = declaration.value,
+        property    = properties[name],
+        unprefixed_value, value_prefix;
 
+    // If this type of property hasn't been added to properties-object already
     if(!property) {
-      unprefixed = this.unprefix(value);
-      property = properties[name] = this.initPrefixedProperties(name, unprefixed);
+      unprefixed_value = this.unprefix(value); // #tested
+      property = properties[name] = this.initPrefixedProperties(name, unprefixed_value); //#untested
     }
 
     // If property has a prefix just overwrite whatever stands
-    if(prefix){
-      property[prefix] = this.prefixValue(value, prefix);
+    // Last value applies
+    if(prop_prefix){
+      // Make sure to prefix the value with same prefix
+      property[prop_prefix] = this.prefixValue(value, prop_prefix); // #untested
     }
     else {
-      value_prefix = this.getPrefix(value);
-      property['noprefix'][value_prefix || 'noprefix'] = this.prefixValue(value);
+      // #design-val
+      // Samma property <utan prefix> (e.g. background-image och linear-gradient)
+      // med flera values kommer i detta fall få det värdet som kommer först i deklarationen som sitt noprefix-value
+      // Values som inte har prefix på property skriver bara över om value har prefix, annars skriver den över noprefix.
+
+
+      // Property isn't prefixed but value might be
+      // Get the prefix for the value
+      value_prefix = this.getPrefix(value); // #untested with values
+
+      property['noprefix'][value_prefix || 'noprefix'] = this.prefixValue(value, value_prefix); //#untested
+
       // this.parseValue(property['noprefix'], declaration.value);
     }
+
+    return properties;
   },
 
 
 
-
+  // Används inte
   /**
    * { Parse Value }
    * @param  {Object} property  Property where we add the data
@@ -295,42 +393,51 @@ var PrefixrNew = {
 
   // Ger tillbaka ett objekt med alla prefixes för property-typen
   // Value ska inte ha några prefix
+  // Varken name eller value får ha prefix
   initPrefixedProperties: function(name, value) {
+    // Onödig operation
+    // name  = this.unprefix(name);
     // value = this.unprefix(value);
 
-    var prefixes = prefix_rules[name];
+    // Get all prefixes associated with the property-name
+    var prefixes = this.prefixes[name] || [];
 
+    // Default object 
     var obj = {
       noprefix: {
+        // Value needs to be prefixed and can therefore be applied directly
+        noprefix: value
       }
     };
 
-    // For each prefix in prefixes
-    for(var prefix_n = 0, prefix_len = prefixes.length; prefix_n < prefix_len; prefix_n++){
+
+    // Lägg till alla property-names som ska ha prefix
+    for(var prefix_n = 0, prefix_len = prefixes.length; prefix_n < prefix_len; ++prefix_n){
       var prefix = prefixes[prefix_n];
       
       // Ge den ett standardvärde med potentiell prefix
-      obj[prefix] = prefixValue(value, prefix);
+      obj[prefix] = this.prefixValue(value, prefix); // #untested
     }
 
 
     // Gå igenom alla vendors
-    var vendors =  this.vendors; //[ '...' ]; // # Ge värde
+    var vendors =  this.vendors;
 
-    // For each vendor in vendors:
-    for(var vendor_n = 0, vendor_len = vendors.length; vendor_n < vendor_len; vendor_n++){
+
+    // Se om values behöver prefix
+    for(var vendor_n = 0, vendor_len = vendors.length; vendor_n < vendor_len; ++vendor_n){
       var vendor = vendors[vendor_n];
       
-      // Om vi har en property med denna vendor så lägger vi inte till
+      // Om vi har en property med denna vendor så lägger vi inte till under noprefix
       if(obj[vendor])
         continue;
 
       // Testa prefixa värdet med vendorn
-      prefixed_value = prefixValue(value, vendor);
+      prefixed_value = this.prefixValue(value, vendor); // #untested
 
       // Om värdet är förändrat så lägger vi till det
       if(prefixed_value != value)
-        obj[vendor] = prefixed_value;
+        obj['noprefix'][vendor] = prefixed_value;
     }
 
     return obj;
@@ -338,25 +445,30 @@ var PrefixrNew = {
 
 
   // Returnerar namnet utan prefix
-  getName: function(prop) {
-
+  // Bytt namn från: getName -> unprefix
+  unprefix: function(prop) {
+    return prop.replace(this.prefix_regexp, '');
   },
 
   // Returnerar prefixet från propertien eller null om ingen finns
   getPrefix: function(prop) {
-    return getPrefixed(prop);
+    var r = prop.match(this.prefix_regexp);
+    return (r === null)? null : ('-' + r[0].replace(/-/g, ''));
+
+    // return getPrefixed(prop) || null;
   },
 
-  getPrefixed: function(property) {
-    for(var v in this.vendors) {
-      if(property.indexOf(this.vendors[v]) !== -1)
-        return this.vendors[v];
-    }
-    return undefined;
-  },
+  // Används inte
+  // getPrefixed: function(property) {
+  //   for(var v in this.vendors) {
+  //     if(property.indexOf(this.vendors[v]) !== -1)
+  //       return this.vendors[v];
+  //   }
+  //   return undefined;
+  // },
 
   getPrefixes: function(value, filter) {
-    var v = this.prefixes[value];
+    var v = this.prefixes[value] || undefined; // Don't need to explicitly set to undefined but it's clearer
 
     if(v && filter) {
       var f = [];
@@ -378,77 +490,125 @@ var PrefixrNew = {
     });
   },
 
-  // Ska returnera en sträng antingen med det inskickade prefixet eller
-  // utan prefix
+  // Ska returnera en sträng antingen med det inskickade prefixet eller utan prefix
+  // Om inget prefix skickas in eller är null så bri värdet oprefixat
   prefixValue: function(value, prefix) {
+    // Om ett falskt-värde-prefix skickas in så returneras oprefixat value
+    if(!prefix)
+      return this.unprefix(value);
+
+
     // Gets the relevant information from value-string
+    // Regular expression which selects only the properties in a string
+    // They have a pattern
     var value_select_rgx = /(^| |,)(-?[A-z]+)+/g;
     // And stores in @values
     var values = value.match(value_select_rgx);
 
-
-    // If there were no relevant values we return
+    // If there were no relevant values we return it as it were
     if(!values)
-      return [value];
+      return value;
 
     // Lazy-isch evaluation of function
     var mapValues = function(e){ return e.replace(' ', '').replace(',', ''); };
     // Trim leftovers (space or ,) from RegExp capture
     values = values.map(mapValues);
 
-    // Resulting array that is returned
-    var res = [];
 
-    for(var ven in this.vendors) {
-      var indices = [];
-      var vendor = this.vendors[ven];
 
-      // Check filter
-      if(filter && filter.indexOf(vendor) === -1)
-        continue;
+    // I detta skede
+    // Vi har alla individuella värden i @values
+    // Vi har att prefix att se om dessa värden behöver
+    
+    // Array som håller koll på vilka värden där det behövs prefix
+    var indices = [];
 
-      for(var v in values) {
-        var val = values[v];
+    // For each val in values
+    for(var val_n = 0, val_len = values.length; val_n < val_len; ++val_n){
+      var val = values[val_n];
+      
+      // Prefixes associated with the value
+      var prfx = this.prefixes[val];
 
-        var prefixes = this.getPrefixes(val, vendor);
-
-        if(!prefixes)
-          continue;
-
-        indices.push(v);
-      }
-
-      if(indices.length > 0) {
-        var str = value;
-
-        for(var i in indices) {
-          str = this.replaceValue(str, values[i], vendor+'-'+values[i]);
-        }
-
-        res.push(str);
+      // If there were any prefixes and if our @prefix is one of them
+      if(prfx && prfx.indexOf(prefix) !== -1) {
+        // Push our index (@val_n) to indices
+        indices.push(val_n);
       }
     }
 
-    if(res.length === 0 || !filter)
-      res.push(value);
+
+    // For each index in indices
+    for(var index_n = 0, index_len = indices.length; index_n < index_len; ++index_n){
+      var index = indices[index_n];
+
+      // Update @value with prefixed replacement for each @values that is in @indices
+      value = this.replaceValue(value, values[index], prefix+'-'+values[index]);
+    }
+
+    return value;
+
+
+    // // Resulting array that is returned
+    // var res = [];
+
+    // // Gå igenom alla vendors för att se om de behövs som prefix
+    // for(var ven in this.vendors) {
+    //   var indices = [];
+    //   var vendor = this.vendors[ven];
+
+    //   // Check prefix
+    //   if(prefix.indexOf(vendor) === -1)
+    //     continue;
+
+    //   for(var v in values) {
+    //     var val = values[v];
+
+    //     var prefixes = this.getPrefixes(val, vendor);
+
+    //     if(!prefixes)
+    //       continue;
+
+    //     indices.push(v);
+    //   }
+
+    //   if(indices.length > 0) {
+    //     var str = value;
+
+    //     for(var i in indices) {
+    //       str = this.replaceValue(str, values[i], vendor+'-'+values[i]);
+    //     }
+
+    //     res.push(str);
+    //   }
+    // }
+
+    // if(res.length === 0 || !prefix)
+    //   res.push(value);
 
 
 
-    return res;
-
+    // return res;
   },
 
-  // Returnerar en sträng utan prefixes
-  unprefix: function(value) {
-    // #Untested
-    // For each vendor in this.vendors
-    for(var vendor_n = 0, vendor_len = this.vendors.length; vendor_n < vendor_len; ++vendor_n){
-      var vendor = this.vendors[vendor_n];
-      value.replace(vendor, '');
-    }
-  }
+  // // Returnerar en sträng utan prefixes
+  // unprefix: function(value) {
+  //   // #Untested
+  //   // For each vendor in this.vendors
+  //   for(var vendor_n = 0, vendor_len = this.vendors.length; vendor_n < vendor_len; ++vendor_n){
+  //     var vendor = this.vendors[vendor_n];
+  //     value.replace(vendor, '');
+  //   }
+  // }
 };
 
+
+
+
+////////////
+// EXPORT //
+////////////
+module.exports = PrefixrNew;
 
 
 
@@ -893,164 +1053,6 @@ var Prefixr = {
     return v;
   }
 };
-
-
-
-
-
-
-//////////
-// TEST //
-//////////
-function test() {
-  var log = console.log;
-
-  // function getPrefixes(p, f) {
-  //   log(p + '('+(f||'none')+'): ' + Prefixr.getPrefixes(p, f));
-  // }
-
-  // log('----Prefixes----');
-  // getPrefixes('transform', '-webkit');
-  // getPrefixes('linear-gradient');
-  // getPrefixes('top');
-  // getPrefixes('width');
-
-
-
-  // function getPrefixed(p) {
-  //   // return;
-  //   log(p + ': ' + Prefixr.getPrefixed(p));
-  // }
-
-  // log();log();
-  // log('----Prefixed----');
-  // getPrefixed('transform');
-  // getPrefixed('-webkit-transform');
-  // getPrefixed('top');
-  // getPrefixed('-moz-animation');
-  // getPrefixed('-ms-animation');
-
-  
-
-  // function prefixValue(v, f) {
-  //   // return;  
-  //   log(v + '('+(f||'none')+'): ' + JSON.stringify(Prefixr.prefixValue(v, f)));
-  // }
-
-  // log();log();
-  // log('----Prefix Value----');
-  // prefixValue('top 30ms');
-  // prefixValue('10px');
-  // prefixValue('20%');
-  // prefixValue('0');
-  // prefixValue('linear-gradient');
-  // prefixValue('transform 3s');
-  // prefixValue('transform 3s', '-webkit');
-  // prefixValue('transform 3s, transition 2s');
-  // prefixValue('transform 3s, transition 2s', '-webkit');
-  // prefixValue('10px', '-webkit');
-  // prefixValue('top 30ms', '-webkit');
-
-
-  // function replaceValue(str, v, r) {
-  //   log(str + '('+v+' -> '+r+'): ' + Prefixr.replaceValue(str, v, r));
-  // }
-
-  // log();log();
-  // log('----Replace value----');
-  // replaceValue('transform 3s', 'transform', '-moz-transform');
-  // replaceValue('top 3s, left 2s', 'bottom', '-ms-bottom');
-  // replaceValue('top 3s,left 2s', 'left', '-ms-left');
-  // replaceValue('linear-gradient(top, left, 300, 200)', 'linear-gradient', '-o-linear-gradient');
-  // replaceValue('transform 2s, -webkit-transform 2s', 'transform', '-ms-transform');
-
-
-
-
-  // function parseDeclarations(d, f) {
-  //   log('#######');
-  //   // log(JSON.stringify(d, null, ' ') + f + ' --->');
-  //   log(JSON.stringify(Prefixr.parseDeclarations(d, f), null, ' '));
-  // }
-
-  // log();log();
-  // log('----Parse Declarations----');
-  // parseDeclarations(
-  //   [
-  //     {
-  //       type: 'declaration',
-  //       property: 'transition',
-  //       value: 'transform 1s'
-  //     },
-  //     {
-  //       type: 'declaration',
-  //       property: 'background-image',
-  //       value: 'linear-gradient(top, left, 300, 200)'
-  //     }
-  //   ]
-  // );
-  // parseDeclarations(
-  //   [
-  //     {
-  //       type: 'declaration',
-  //       property: 'transition',
-  //       value: 'transform 1s'
-  //     },
-  //     {
-  //       type: 'declaration',
-  //       property: 'background-image',
-  //       value: 'linear-gradient(top, left, 300, 200)'
-  //     }
-  //   ], '-webkit'
-  // );
-
-
-  // function decHasProp(d, p) {
-  //   log(JSON.stringify(d, null, ' '));
-  //   log(p + ': ' + Prefixr.declarationHasProperty(d, p));
-  // }
-
-  // log();log();
-  // log('----Declaration Has Property----');
-  // decHasProp(
-  //   [
-  //     {
-  //       type: 'declaration',
-  //       property: '-webkit-transition',
-  //       value: 'transform 1s'
-  //     },
-  //     {
-  //       type: 'declaration',
-  //       property: 'left',
-  //       value: '10s'
-  //     }
-  //   ], 'left'
-  // );
-  // 
-
-
-  log();log();
-  log('----Parse file----');
-  var fs = require('fs');
-  fs.readFile('c:/users/hektor/dropbox/webb/linkpage/bump.css', 'utf8', function(e, data){
-    log(Prefixr.parseCSS(data));
-  });
-}
-
-
-test();
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
