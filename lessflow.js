@@ -7,14 +7,13 @@
  * Snygga till kod
  * Felhantering
  *
- * Hantera less-parsing i egen modul(?) eller iaf strukturera upp
+ * 
  * Olika inställningar för att använda prefix eller ej
  * Options för komprimering
  *
  * Testfall för modulen
  * 
  */
-
 
 
 
@@ -191,5 +190,23 @@ function parseLess(event, data) {
 }
 
 
-watch('c:/users/hektor/dropbox/webb/linkpage/', parseLess, ['less']);
+/////////////
+// OPTIONS //
+/////////////
+// 
+// 
+// 
+function options() {
+
+}
+
+
+console.log(args);
+console.log(process.cwd());
+
+
+
+// watch(process.cwd(), parseLess, ['less']);
+
+// watch('c:/users/hektor/dropbox/webb/linkpage/', parseLess, ['less']);
 // watch('style.less', parseLess);

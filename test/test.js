@@ -292,6 +292,17 @@ function parseRule() {
   });
 }
 
+function parseCSS() {
+  log();log(col('----Parse CSS----', 'c'));
+
+  var css = require('css');
+  var fs = require('fs');
+
+  var data = fs.readFileSync('c:/users/hektor/dropbox/webb/linkpage/bump.css', 'utf8');
+
+  log(prefixr.parseCSS(data, false));
+}
+
 
 ////////////////
 // Test cases //
@@ -302,4 +313,6 @@ function parseRule() {
 // prefixValue();
 // initPrefixedProperties();
 // parseDeclaration();
-parseRule();
+// parseRule();
+parseCSS();
+
