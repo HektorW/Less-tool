@@ -1,13 +1,23 @@
 Less-flow
 =========
 
-Less-flow is a tool built with node.js for simpler less-development.
+Watch, compiler and prefixer
 
-It watches directories for less-files and automatically compiles and prefixes the source into css.
-
-
+Less-flow is a tool built for simpler less-development.
 
 
-<code>
-  lessflow ./less/
-</code>
+
+## Getting started
+* Install with npm<br>
+  `npm install -g less-flow`
+* Run it in current directory from terminal:<br>
+  `less-flow`<br>
+  Or specify directories:<br>
+  `less-flow ./less/ ../other_module/less/`
+
+
+## Usage
+Files will be outputed in the same directory as the compiled less-file and with the same name except for extension.
+
+
+# [License](http://github.com/HektorW/Less-tool/LICENSE)
