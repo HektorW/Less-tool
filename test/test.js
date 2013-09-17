@@ -8,22 +8,26 @@ var jstr = function(str, ind) {
   return JSON.stringify(str, null, ind || ' ');
 };
 
-var colors = {
-  'black': '\033[31m',
-  'r': '\033[31m',
-  'g': '\033[32m',
-  'y': '\033[33m',
-  'b': '\033[34m',
-  'm': '\033[35m',
-  'c': '\033[36m',
-  'w': '\033[37m',
-  'reset': '\033[0m'
-};
 
-var col = function(str, c) {
-  var r = colors[c] || colors['reset'];
-  return r + str + colors['reset'];
-};
+
+var col = (function() {
+  var colors = {
+    'black': '\033[31m',
+    'r': '\033[31m',
+    'g': '\033[32m',
+    'y': '\033[33m',
+    'b': '\033[34m',
+    'm': '\033[35m',
+    'c': '\033[36m',
+    'w': '\033[37m',
+    'reset': '\033[0m'
+  };
+
+  return function(str, c) {
+    var r = colors[c] || colors['reset'];
+    return r + str + colors['reset'];
+  };
+})();
 
 //////////
 // TEST //

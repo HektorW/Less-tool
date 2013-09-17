@@ -1,9 +1,13 @@
-Less-tool
+Less-flow
 =========
 
-Compiles less to css and adds vendor prefixes to it.
+Less-flow is a tool built with node.js for simpler less-development.
+
+It watches directories for less-files and automatically compiles and prefixes the source into css.
+
+
 
 
 <code>
-  node less-watch.js ./less-dir
+  lessflow ./less/
 </code>

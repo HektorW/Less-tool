@@ -17,34 +17,15 @@
 
 
 
-var args = process.argv.splice(2);
-
-
 var watch = (function() {
   // Require modules
   var fs = require('fs'),
       crypto = require('crypto'),
       m_path = require('path'); // Module path => m_path
 
-
-
-  // Storage for all objects
-  var cache = {};
-  // Function to fetch the object associated with arguments.callee
-  cache.get = function(fn) {
-    for(var v in this) {
-      if(this[v].fn === fn) {
-        return this[v];
-      }
-    }
-
-    return null;
-  };
-
-
   // Exposed function
-  function fn(path, callback, opt) {
-    console.log('Watching: ' + path);
+  function fn(path, callback, filter) {
+    console.log(col('Watching: ', 'c') + path);
 
 
     // Check if path exists
@@ -54,22 +35,10 @@ var watch = (function() {
 
     var stat = fs.lstatSync(path);
 
-    // Add a new object bound with path, opts and callback
-    // if(!cache[path]) {
-    //   cache[path] = {
-    //     path: path,
-    //     callback: callback,
-    //     opt: opt,
-    //     fn: cb,
-    //     stat: stat,
-    //     fileHash: {}
-    //   };
-    // }
-
     var obj = {
       path: path,
       callback: callback,
-      opt: opt,
+      filter: filter,
       fn: cb,
       stat: stat,
       fileHash: {}
@@ -83,10 +52,6 @@ var watch = (function() {
       // #Note
       // If filename === null , the file has been removed
 
-
-      // Get our object correct object
-      // var obj = cache.get(cb);
-
       if(!obj)
         throw 'Could not fetch object associated with function.';
 
@@ -99,18 +64,16 @@ var watch = (function() {
       if(!fs.existsSync(path)) {
         // Call callback with information
         // or just return ???????
-
         return;
       }
 
 
       // Check options to filter out file-types
-      if(obj.opt) {
+      if(obj.filter) {
         var ext = m_path.extname(filename).replace('.', '');
 
         // If extension is not in options we return;
-        if(obj.opt.indexOf(ext) === -1) {
-
+        if(obj.filter.indexOf(ext) === -1) {
           return;
         }
       }
@@ -122,8 +85,8 @@ var watch = (function() {
         obj.fileHash[path] = '';
 
 
+      // Change to Async stream into crypto
       var file_str = fs.readFileSync(path, 'utf8');
-
       var hash = crypto.createHash('sha1').update(file_str).digest('hex');
 
       // If nothing has changed
@@ -140,7 +103,7 @@ var watch = (function() {
       // File has changed -> call the callback
       obj.callback(event, {
         filename: filename,
-        fullpath: path,
+        fullPath: path,
         fileString: file_str
       });
     }
@@ -159,13 +122,7 @@ function parseLess(event, data) {
 
   var less = require('less'),
       fs = require('fs'),
-      prefix = require('./prefixr.js');
-
-  var vendors = ['-webkit-', '-moz-', '-ms-'];
-  var styles = [
-    '@keyframes', 'transform', 'border-radius'
-  ];
-
+      prefixr = require('./prefixr.js');
 
   // Render less to css
   less.render(data.fileString, function(e, css_data) {
@@ -173,14 +130,14 @@ function parseLess(event, data) {
     // Prefix css
     var css;
     try {
-      css = prefix(css_data, false);
+      css = prefixr.parseCSS(css_data, Options.compress);
     } catch(ex) {
       css = css_data;
     }
 
-    var css_file = data.fullpath.substr(0, data.fullpath.lastIndexOf('.')) + '.css';
+    var css_file_name = data.fullPath.substr(0, data.fullPath.lastIndexOf('.')) + '.css';
 
-    fs.writeFile(css_file, css, function(err) {
+    fs.writeFile(css_file_name, css, function(err) {
       if(err)
         throw err;
     });
@@ -194,19 +151,77 @@ function parseLess(event, data) {
 // OPTIONS //
 /////////////
 // 
+// // Arguments from command line when invoked
+// args = process.argv.splice(2);
 // 
+// if no args:
+//   Watch process.cwd()
+// else:
+//   Watch each path in args relative to process.cwd() (alt. full path)
 // 
-function options() {
+// Alternatively use some sort of config file to determine watch paths
+// 
+function checkArgs() {
+  var args = process.argv.splice(2);
 
+  if(args.length === 0) {
+    Options.paths[0] = '.';
+  }
+  else {
+    Options.paths.push.apply(Options.paths, args);
+  }
 }
 
 
-console.log(args);
-console.log(process.cwd());
+// Start watching
+// Uses Options-object
+function startWatch() {
+  var resolve = require('path').resolve;
+
+
+  if(!Options.paths)
+    Options.paths = ['.'];
+
+  // For each path in Options.paths
+  for(var path_n = 0, path_len = Options.paths.length; path_n < path_len; ++path_n){
+    var path = Options.paths[path_n];
+    
+    watch(resolve(path), parseLess, Options.filter);
+  }
+}
+
+var col = (function() {
+  var colors = {
+    'black': '\033[31m',
+    'r': '\033[31m',
+    'g': '\033[32m',
+    'y': '\033[33m',
+    'b': '\033[34m',
+    'm': '\033[35m',
+    'c': '\033[36m',
+    'w': '\033[37m',
+    'reset': '\033[0m'
+  };
+
+  return function(str, c) {
+    var r = colors[c] || colors['reset'];
+    return r + str + colors['reset'];
+  };
+})();
 
 
 
-// watch(process.cwd(), parseLess, ['less']);
+var Options = {
+  paths: [],
+  filter: ['less'],
+  compress: true
+};
 
-// watch('c:/users/hektor/dropbox/webb/linkpage/', parseLess, ['less']);
-// watch('style.less', parseLess);
+
+checkArgs();
+
+
+///////////
+// Start //
+///////////
+startWatch();

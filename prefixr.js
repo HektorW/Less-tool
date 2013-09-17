@@ -177,7 +177,7 @@ var PrefixrNew = {
 
 
   parseCSS: function(css_string, compress) {
-    if(compress === undefined)
+    if(compress !== false)
       compress = true;
 
     var tree = css.parse(css_string);
