@@ -1,12 +1,31 @@
 {
   "name": "less-flow",
   "main": "./lessflow.js",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "dependencies": {
     "css": "1.4.1",
     "less": "1.4.2"
   },
   "bin": {
     "lessflow": "./lessflow.js"
-  }
+  },
+  "readmeFilename": "README.md",
+  "description": "Less-flow =========",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HektorW/Less-tool.git"
+  },
+  "keywords": [
+    "less",
+    "prefix",
+    "watcher",
+    "compile",
+    "vendorprefix"
+  ],
+  "author": "HektorW",
+  "license": "MIT"
 }
