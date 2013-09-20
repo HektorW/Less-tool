@@ -10,7 +10,7 @@
     "lessflow": "./lessflow.js"
   },
   "readmeFilename": "README.md",
-  "description": "Less-flow =========",
+  "description": "less watcher, compiler and prefixer",
   "directories": {
     "test": "test"
   },
@@ -21,10 +21,11 @@
   },
   "keywords": [
     "less",
-    "prefix",
-    "watcher",
-    "compile",
-    "vendorprefix"
+    "watch",
+    "compiler",
+    "prefixer",
+    "vendorprefix",
+    "parser"
   ],
   "author": "HektorW",
   "license": "MIT"

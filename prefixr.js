@@ -157,7 +157,9 @@ var PrefixrNew = {
     'perspective': ['-webkit'],
     'transform-style': ['-webkit'],
     'transform-origin': ['-webkit'],
-    'appearance': ['-webkit', '-moz']
+    'appearance': ['-webkit', '-moz'],
+    'sticky': ['-webkit'],
+    'text-stroke': ['-webkit']
   },
 
   vendors: [

@@ -124,26 +124,30 @@ function parseLess(event, data) {
       fs = require('fs'),
       prefixr = require('./prefixr.js');
 
-  // Render less to css
-  less.render(data.fileString, function(e, css_data) {
 
-    // Prefix css
-    var css;
-    try {
-      css = prefixr.parseCSS(css_data, Options.compress);
-    } catch(ex) {
-      css = css_data;
-    }
+  try {
 
-    var css_file_name = data.fullPath.substr(0, data.fullPath.lastIndexOf('.')) + '.css';
+    // Render less to css
+    less.render(data.fileString, function(e, css_data) {
 
-    fs.writeFile(css_file_name, css, function(err) {
-      if(err)
-        throw err;
+      // Prefix css
+      var css;
+      try {
+        css = prefixr.parseCSS(css_data, Options.compress);
+      } catch(ex) {
+        css = css_data;
+      }
+
+      var css_file_name = data.fullPath.substr(0, data.fullPath.lastIndexOf('.')) + '.css';
+
+      fs.writeFile(css_file_name, css, function(err) {
+        if(err)
+          throw err;
+      });
     });
-  });
-
-
+  } catch(ex) {
+    console.log(ex);
+  }
 }
 
 
