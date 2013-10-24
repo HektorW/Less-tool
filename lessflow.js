@@ -142,7 +142,7 @@ function parseLess(event, data) {
       try {
         css = prefixr.parseCSS(css_data, Options.compress);
       } catch(ex) {
-        console.log(ex.message || ex);
+        console.log(col('Error', 'r') + ' ' + col('(prefixr)', 'c') + ': ' + (ex.message || ex));
         css = css_data;
       }
 
@@ -154,7 +154,7 @@ function parseLess(event, data) {
       });
     });
   } catch(ex) {
-    console.log(ex.message);
+    console.log(col('Error', 'r') + ' ' + col('(less)', 'm') + ': ' + (ex.message || ex));
   }
 }
 
