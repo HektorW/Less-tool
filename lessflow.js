@@ -109,6 +109,13 @@ var watch = (function() {
     }
 
 
+    // Start by processing all files in directory
+    if(stat.isDirectory()) {
+      var files = fs.readdirSync(path);
+      for(var f = 0; f < files.length; f++)
+        cb('change', files[f]);
+    }
+
     // Bind the watch
     fs.watch(path, cb);
   }
@@ -135,6 +142,7 @@ function parseLess(event, data) {
       try {
         css = prefixr.parseCSS(css_data, Options.compress);
       } catch(ex) {
+        console.log(ex.message || ex);
         css = css_data;
       }
 
@@ -146,7 +154,7 @@ function parseLess(event, data) {
       });
     });
   } catch(ex) {
-    console.log(ex);
+    console.log(ex.message);
   }
 }
 

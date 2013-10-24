@@ -1,0 +1,14 @@
+{
+  "vendors": [
+    "webkit",
+    "moz",
+    "ms",
+    "o"
+  ],
+  "keyframes": [
+    "webkit"
+  ],
+  "prefix_rules": {
+    "transition": ["webkit"]
+  }
+}

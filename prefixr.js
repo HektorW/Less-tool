@@ -159,7 +159,11 @@ var PrefixrNew = {
     'transform-origin': ['-webkit'],
     'appearance': ['-webkit', '-moz'],
     'sticky': ['-webkit'],
-    'text-stroke': ['-webkit']
+    'text-stroke': ['-webkit'],
+    'flex': ['-webkit'],
+    'flex-flow': ['-webkit'],
+    'flex-direction': ['-webkit'],
+    'order': ['-webkit']
   },
 
   vendors: [
@@ -222,6 +226,8 @@ var PrefixrNew = {
     return css.stringify(tree, {compress: compress});
   },
 
+  parseKeyframe: function() {
+  },
 
   // #Input
   // rule: {
